@@ -175,7 +175,7 @@ void vAsyncWebServer() {
       String SBME2 = String(BME2);
       String SBME3 = String(BME3);
 
-      StaticJsonDocument<2048> doc;
+      StaticJsonDocument<4096> doc;
       doc["time"] = String(timeUpdate) + "000";
       doc["suhu1"] = safeValue(suhu1);
       doc["suhu2"] = safeValue(suhu2);
@@ -218,6 +218,10 @@ void vAsyncWebServer() {
       doc["USDP1"] = safeValue(USDP1);
       doc["USDP2"] = safeValue(USDP2);
 
+      if (doc.overflowed()) {
+        request->send(500, "text/plain", "JSON build overflow");
+        return;
+      }
       AsyncResponseStream *response = request->beginResponseStream("application/json");
       serializeJson(doc, *response);
       request->send(response);
@@ -232,7 +236,7 @@ void vAsyncWebServer() {
       String Dsuhu2 = String(SuhuDS2);
       String Dsuhu3 = String(SuhuDS3);
 
-      StaticJsonDocument<512> doc;
+      StaticJsonDocument<768> doc;
       doc["Dsuhu1"] = safeValue(Dsuhu1);
       doc["Dsuhu2"] = safeValue(Dsuhu2);
       doc["Dsuhu3"] = safeValue(Dsuhu3);
@@ -240,6 +244,10 @@ void vAsyncWebServer() {
       doc["BME2"] = safeValue(String(BME2));
       doc["BME3"] = safeValue(String(BME3));
 
+      if (doc.overflowed()) {
+        request->send(500, "text/plain", "JSON build overflow");
+        return;
+      }
       AsyncResponseStream *response = request->beginResponseStream("application/json");
       serializeJson(doc, *response);
       request->send(response);
