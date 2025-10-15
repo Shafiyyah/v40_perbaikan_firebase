@@ -66,9 +66,7 @@ ESP32Time rtc;
 unsigned long timeUpdate;
 
 //varbaru
-DynamicJsonDocument doc(10580);
-JsonArray rows = doc.createNestedArray("rows");
-double arrayJson[40][12];
+float arrayJson[40][12];
 String arraywaktu[12];
 int counterParsing = 0; 
 int BanyakDataPengiriman = 0;
@@ -3189,8 +3187,8 @@ void vParsingResponseWebV2(const char* jsonResponse){
   int jumlahSensorParsed;
   String crc32web;
 
-  // Parse JSON
-  // DynamicJsonDocument doc(4096);
+  // Parse JSON using a local document to avoid global heap usage
+  DynamicJsonDocument doc(4096);
   DeserializationError error = deserializeJson(doc, jsonResponse);
   if (error) {
     Serial.print(F("Failed to parse JSON: "));
@@ -3268,7 +3266,6 @@ void vParsingResponseWebV2(const char* jsonResponse){
                   i, fCalTempM[i], fCalHumB[i], fCalPresM[i], fCalVeloM[i], fCalHumM[i], fCalVeloB[i], fCalTempB[i], fCalPresB[i], fCalBatS[i]);
   }
   Serial.println(" ");
-  doc.clear();
 }
 
 void vPengambilanDataSpreadSheet(){
@@ -3340,14 +3337,12 @@ void vPengirimanSpreadsheet() {
     return;
   }
 
-  JsonArray rows = doc["rows"].as<JsonArray>();
-  if (rows.isNull()) {
-    rows = doc.createNestedArray("rows");
-  }
-  
+  // Build JSON locally and stream without constructing a String payload
+  DynamicJsonDocument doc(8192);
+  JsonArray rows = doc.createNestedArray("rows");
+
   for (int i = 0; i < BanyakDataPengiriman; i++) {
     JsonObject row = rows.createNestedObject();
-
     row["Time"] = arraywaktu[i];
     row["S1"] = arrayJson[1][i];
     row["S2"] = arrayJson[2][i];
@@ -3391,10 +3386,7 @@ void vPengirimanSpreadsheet() {
     delay(1);
   }
 
-  String payload;
-  serializeJson(doc, payload);
-
-  uint32_t TotalPanjangJson = payload.length();
+  size_t TotalPanjangJson = measureJson(doc);
 
   // --- Koneksi ke Google Script ---
   if (!client.connect(serverName, serverPort)) {
@@ -3417,9 +3409,10 @@ void vPengirimanSpreadsheet() {
   client.println(); // pemisah header-body
 
   // --- Kirim body JSON ---
-  Serial.println("payload =");
-  Serial.println(payload);
-  client.print(payload);
+  Serial.println("payload (streaming) =");
+  serializeJson(doc, Serial);
+  Serial.println();
+  serializeJson(doc, client);
   client.println();
 
   Serial.println("✅ Data dikirim, menunggu respons...");
